@@ -1,0 +1,420 @@
+cat("\f")
+rm(list=ls())
+library(pacman)
+p_load(tidyverse,
+       janitor,
+       data.table,
+       dtplyr,
+       rio)
+
+theme_set(theme_bw())
+
+#======#
+# 2016 #
+#======#
+
+### load data
+geih_2016 = import("2_data_2016/output/geih_2016.rds") %>% select(directorio,secuencia_p,orden,sexo=p6020,edad=p6040,esc=p6210,clase=clase.x,dpto=dpto.x,salud=p6090,pension=p6920,fex=fex_c_2011.x,ft,ocu=oci,deso=dsi,tiene_contrato=p6440,contrato_verbal_escrito=p6450,contrato_def_indef=p6460,horas_semanales=p6800,dur_desempleo=p7250,subsidio_desempleo=p9460,inglabo) %>% tibble() %>% mutate(pet=ifelse(edad>10,1,0),year=2016) %>% 
+  mutate(ft=ifelse(ocu==1|deso==1,1,0))
+
+
+### Correct Expansion Factor
+geih_2016$fex = gsub(",","\\.",geih_2016$fex) %>% as.numeric()/3
+geih_2016$fex %>% sum()
+
+
+### Clean Variables
+geih_2016=geih_2016 %>% 
+  mutate(sexo=case_when(sexo==1~"Hombre",
+                        sexo==2~"Mujer"),
+         clase=case_when(clase==1~"Urbano",
+                         clase==2~"Rural"),
+         esc=case_when(esc==1 ~"Ninguno",
+                       esc==2 ~"Preescolar",
+                       esc==3 ~"Primaria",
+                       esc==4 ~"Secundaria",
+                       esc==5 ~"Media",
+                       esc==6 ~"Superior"),
+         salud=case_when(salud==1 ~"Si",
+                         salud==2~"No"),
+         grupo_etario = case_when(edad<15~"15<",
+                                  between(edad,15,19)~"15-19",
+                                  between(edad,20,24)~"20-24",
+                                  between(edad,25,29)~"25-29",
+                                  between(edad,30,34)~"30-34",
+                                  between(edad,35,39)~"35-39",
+                                  between(edad,40,44)~"40-44",
+                                  between(edad,45,49)~"45-49",
+                                  between(edad,50,54)~"50-54",
+                                  between(edad,55,59)~"55-59",
+                                  between(edad,60,65)~"60-65",
+                                  edad>65 ~"65+"),
+         pension=case_when(pension==1 ~"Cotiza Pensión",
+                           pension==2 ~"No Cotiza Pensión",
+                           pension==3 ~"Pensionado"),
+         tiene_contrato=case_when(tiene_contrato==1 ~"Si",
+                                  tiene_contrato==2 ~"No"),
+         contrato_verbal_escrito=case_when(contrato_verbal_escrito==1 ~"Si",
+                                           contrato_verbal_escrito==2~"No",
+                                           contrato_verbal_escrito==3~"Ns/Nr"),
+         contrato_def_indef=case_when(contrato_def_indef==1 ~"Termino Indefinido",
+                                      contrato_def_indef==2 ~"Termino Fijo",
+                                      contrato_def_indef==3 ~"Ns/Nr"),
+         subsidio_desempleo=case_when(subsidio_desempleo=="1" ~"Si",
+                                      subsidio_desempleo=="2"~"No",
+                                      subsidio_desempleo=="9" ~"Ns/Nr"),
+         informal=ifelse(ocu==1 & pension=="No Cotiza Pensión","Informal","Formal")) %>% 
+  mutate_at(.vars = c("sexo","clase","esc","salud","grupo_etario","pension","contrato_verbal_escrito","contrato_def_indef","tiene_contrato","subsidio_desempleo","informal"),.funs = as_factor)
+
+#======#
+# 2023 #
+#======#
+
+
+### load data
+geih_2023 = import("1_data/output/geih_2023.rds")%>% select(mes=mes.x,directorio,secuencia_p,orden,sexo=p3271,edad=p6040,esc=p3042,clase=clase.x,dpto=dpto.x,salud=p6090,pension=p6920,pet,fex=fex_c18.x,ft=ft.x,fft=fft.x,ocu=oci,deso=dsi,tiene_contrato=p6440,contrato_verbal_escrito=p6450,contrato_def_indef=p6460,horas_semanales=p6800,dur_desempleo=p7250,subsidio_desempleo=p9460,inglabo)%>% tibble() %>% mutate(year=2023,fex=fex/3) %>% 
+  mutate(ft=ifelse(ocu==1|deso==1,1,0))
+
+## Clean Variables
+geih_2023= geih_2023%>% 
+  mutate(sexo=case_when(sexo==1~"Hombre",
+                        sexo==2~"Mujer"),
+         clase=case_when(clase==1~"Urbano",
+                         clase==2~"Rural"),
+         salud=case_when(salud==1 ~"Si",
+                         salud==2~"No"),
+         grupo_etario = case_when(edad<15~"15<",
+                                  between(edad,15,19)~"15-19",
+                                  between(edad,20,24)~"20-24",
+                                  between(edad,25,29)~"25-29",
+                                  between(edad,30,34)~"30-34",
+                                  between(edad,35,39)~"35-39",
+                                  between(edad,40,44)~"40-44",
+                                  between(edad,45,49)~"45-49",
+                                  between(edad,50,54)~"50-54",
+                                  between(edad,55,59)~"55-59",
+                                  between(edad,60,65)~"60-65",
+                                  edad>65 ~"65+"),
+         pension=case_when(pension==1 ~"Cotiza Pensión",
+                           pension==2 ~"No Cotiza Pensión",
+                           pension==3 ~"Pensionado"),
+         esc = case_when(esc==1 ~"Ninguno",
+                         esc==2 ~"Preescolar",
+                         esc==3 ~"Basica Primaria",
+                         esc==4 ~"Basica Secundaria",
+                         esc==5 ~"Media Academica",
+                         esc==6 ~"Media Tecnica",
+                         esc==7~"Normalista",
+                         esc==8 ~"Tecnica Profesional",
+                         esc==9~"Tecnologica",
+                         esc==10~ "Universitaria",
+                         esc==11 ~"Especialización",
+                         esc==12 ~"Maestria",
+                         esc==13 ~"Doctorado",
+                         esc==14 ~"Ns/Nr"),
+         tiene_contrato=case_when(tiene_contrato==1 ~"Si",
+                                  tiene_contrato==2 ~"No"),
+         contrato_verbal_escrito=case_when(contrato_verbal_escrito==1 ~"Si",
+                                           contrato_verbal_escrito==2~"No",
+                                           contrato_verbal_escrito==3~"Ns/Nr"),
+         contrato_def_indef=case_when(contrato_def_indef==1 ~"Termino Indefinido",
+                                      contrato_def_indef==2 ~"Termino Fijo",
+                                      contrato_def_indef==3 ~"Ns/Nr"),
+         subsidio_desempleo=case_when(subsidio_desempleo=="1" ~"Si",
+                                      subsidio_desempleo=="2"~"No",
+                                      subsidio_desempleo=="9" ~"Ns/Nr"),
+         informal=ifelse(ocu==1 & pension=="No Cotiza Pensión","Informal","Formal")) %>% 
+  mutate_at(.vars = c("sexo","clase","esc","salud","grupo_etario","pension","contrato_verbal_escrito","contrato_def_indef","tiene_contrato","subsidio_desempleo","informal"),.funs = as_factor)
+
+### Geih
+geih = bind_rows(geih_2016,geih_2023)%>% 
+  mutate(grupo_etario=fct_relevel(grupo_etario,c("15<","15-19","20-24","25-29","30-34","35-39","40-44","45-49","50-54","55-59","60-65","65+")),
+         inglabo=ifelse(year==2023,inglabo/1.448,inglabo))
+
+### Remove
+rm(geih_2016,geih_2023)
+
+#=====================#
+# Computing statistics#
+#=====================#
+
+### Main 
+geih %>% 
+  group_by(year)%>% 
+  summarise(tbp=(pet*fex) %>% sum(na.rm = T)/fex %>% sum(),
+            tgp=(ft*fex) %>% sum(na.rm=T)/(pet*fex)%>% sum(na.rm=T),
+            unem=((deso*fex) %>% sum(na.rm=T) )/(ft*fex) %>% sum(na.rm=T),
+            ocup=((ocu*fex) %>% sum(na.rm=T) )/(ft*fex) %>% sum(na.rm=T)) %>% 
+  pivot_longer(cols = c("tbp","tgp","unem","ocup"),names_to = c("vars"),values_to = c("vals")) %>% 
+ggplot(aes(fill=as.factor(year), y=vals, x=vars)) + 
+  geom_bar(position="dodge", stat="identity")+
+  scale_x_discrete(labels=c('TO', 'TBP', 'TGP', 'TD'))+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title ="Evolución de Indicadores Claves del Mercado Laboral",
+       subtitle = "Trimestre Movil Enero - Marzo, 2016 vs 2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE")
+
+### Unemployment by sex
+geih %>% 
+  group_by(year,sexo)%>% 
+  summarise(unem=((deso*fex) %>% sum(na.rm=T) )/(ft*fex) %>% sum(na.rm=T)) %>% 
+  ggplot(aes(fill=as.factor(year),x = sexo,y=unem))+
+  geom_bar(position="dodge", stat="identity")+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title ="Desempleo por Sexo",
+       subtitle = "Trimestre Movil Enero - Marzo, 2016 vs 2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE")
+
+### Unemployment by sex and age group
+geih %>% 
+  group_by(year,sexo,grupo_etario)%>% 
+  summarise(unem=((deso*fex) %>% sum(na.rm=T) )/(ft*fex) %>% sum(na.rm=T))%>% 
+  ggplot(aes(x=grupo_etario,y=unem))+
+  geom_col()+
+  facet_wrap(~sexo)+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title ="Desempleo por Sexo y Grupo Etario",
+       subtitle = "Trimestre Movil Enero - Marzo, 2016 vs 2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE")
+
+### Pop by sex
+geih %>% subset(year==2016)%>% 
+  group_by(year,sexo) %>% 
+  reframe(fct_count(grupo_etario,prop=T)) %>% 
+  mutate(n=ifelse(sexo=="Mujer",-1*n,n))%>% 
+  ggplot(aes(x=f,y=n,fill=sexo))+
+  geom_col()+
+  coord_flip() +
+  scale_y_continuous(labels = abs, limits = max(50000) * c(-1,1))+
+  labs(title ="Distribución de la Población Total del País",
+       subtitle = "Trimestre Movil Enero - Marzo, 2016",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE")
+
+geih %>% subset(year==2023)%>% 
+  group_by(year,sexo) %>% 
+  reframe(fct_count(grupo_etario,prop=T)) %>% 
+  mutate(n=ifelse(sexo=="Mujer",-1*n,n))%>% 
+  ggplot(aes(x=f,y=n,fill=sexo))+
+  geom_col()+
+  coord_flip() +
+  scale_y_continuous(labels = abs, limits = max(50000) * c(-1,1))+
+  labs(title ="Distribución de la Población Total del País",
+       subtitle = "Trimestre Movil Enero - Marzo, 2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE")
+
+geih %>% group_by(year,sexo) %>% 
+  summarise(edad_promedio=weighted.mean(edad,w=fex,na.rm = T),
+            edad_mediana=median(edad)) %>% 
+  pivot_longer(cols = c("edad_promedio","edad_mediana"),names_to = c("vars"),values_to = "vals") %>% 
+  ggplot(aes(x=sexo,y=vals,fill=vars))+geom_bar(position = "dodge",stat = "identity")+
+  scale_fill_discrete(labels=c('Edad Mediana', 'Edad Promedio'))+facet_wrap(~year)+
+  labs(title="Evolución de la Edad por Sexo",y="Años",
+       subtitle = "Trimestre Movil Enero - Marzo,2016-2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE")
+
+### Seguro de Salud
+geih %>% 
+  group_by(year) %>% 
+   reframe(fct_count(salud,prop = T)) %>% 
+   subset(is.na(f)==F) %>% 
+  ggplot()+geom_col(aes(x=f,p))+geom_text(nudge_y = 0.03,aes(x=f,y=p,label=round(p*100,1)))+facet_wrap(~year)+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title="¿Tiene seguro de salud?",y="Años",
+       subtitle = "Trimestre Movil Enero - Marzo,2016-2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE")
+
+
+### Status pensional de trabajadores ocupados
+geih %>% subset(ocu==1)%>% 
+  group_by(year) %>% 
+  reframe(fct_count(pension,prop = T)) %>% 
+  subset(is.na(f)==F) %>% 
+  ggplot()+geom_col(aes(x=f,p))+geom_text(nudge_y = 0.03,aes(x=f,y=p,label=round(p*100,1)))+facet_wrap(~year)+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title="Status Pensional de los Trabajadores Ocupados",y="Años",
+       subtitle = "Trimestre Movil Enero - Marzo,2016-2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE")
+
+### Contrato
+geih %>% subset(ocu==1)%>% 
+  group_by(year) %>% 
+  reframe(fct_count(tiene_contrato,prop = T)) %>% 
+  subset(is.na(f)==F) %>% 
+  ggplot()+geom_col(aes(x=f,p))+geom_text(nudge_y = 0.03,aes(x=f,y=p,label=round(p*100,1)))+facet_wrap(~year)+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title="Status Contractual de los Trabajadores Ocupados ¿Tiene Contrato?",y="Años",
+       subtitle = "Trimestre Movil Enero - Marzo,2016-2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE")
+
+### Verbal o escrito
+geih %>% subset(ocu==1)%>% 
+  group_by(year) %>% 
+  reframe(fct_count(contrato_verbal_escrito,prop = T))  %>% 
+  ggplot()+geom_col(aes(x=f,p))+geom_text(nudge_y = 0.03,aes(x=f,y=p,label=round(p*100,1)))+facet_wrap(~year)+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title="Status Contractual de los Trabajadores Ocupados ¿Contrato es Verbal o Escrito?",y="Años",
+       subtitle = "Trimestre Movil Enero - Marzo,2016-2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE")
+
+### Fijo o Indefinido
+geih %>% subset(ocu==1)%>% 
+  group_by(year) %>% 
+  reframe(fct_count(contrato_def_indef,prop = T)) %>% 
+  ggplot()+geom_col(aes(x=f,p))+geom_text(nudge_y = 0.03,aes(x=f,y=p,label=round(p*100,1)))+facet_wrap(~year)+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title="Status Contractual de los Trabajadores Ocupados ¿Contrato es a termino Indefinido o Definido?",y="Años",
+       subtitle = "Trimestre Movil Enero - Marzo,2016-2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE")
+
+
+### Informalidad por sexo y por grupo etariop
+
+### 2016
+geih %>% subset(ocu==1 &year==2016)%>% 
+  group_by(year,sexo,grupo_etario) %>% 
+  reframe(fct_count(informal,prop = T)) %>% 
+  subset(f=="Informal" &grupo_etario!="15<")%>% 
+  ggplot(aes(x=grupo_etario,y=p,fill=sexo))+
+  geom_bar(position = "dodge",stat = "identity")+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title="Informalidad Laboral por Sexo y Grupo Etario",y="¨% Trabajadores Informales",
+       subtitle = "Trimestre Movil Enero - Marzo, 2016",fill="",x="Grupo Etario",
+       caption = "Fuente: Elaboración propia con datos del DANE")
+
+### 2023
+geih %>% subset(ocu==1 &year==2023)%>% 
+  group_by(year,sexo,grupo_etario) %>% 
+  reframe(fct_count(informal,prop = T)) %>% 
+  subset(f=="Informal" &grupo_etario!="15<")%>% 
+  ggplot(aes(x=grupo_etario,y=p,fill=sexo))+
+  geom_bar(position = "dodge",stat = "identity")+
+  scale_y_continuous(labels = scales::percent)+
+  labs(title="Informalidad Laboral por Sexo y Grupo Etario",y="¨% Trabajadores Informales",
+       subtitle = "Trimestre Movil Enero - Marzo, 2023",fill="",x="Grupo Etario",
+       caption = "Fuente: Elaboración propia con datos del DANE")
+
+
+
+### INgresos por sexo
+geih %>% group_by(year,sexo) %>% summarise(ingresos_mean=weighted.mean(inglabo,na.rm = T,w=fex),
+                                           ingresos_median=median(inglabo,na.rm=T)) %>% 
+  pivot_longer(cols = c("ingresos_mean","ingresos_median"),names_to = c("vars"),values_to = "vals") %>% 
+  ggplot(aes(x=vars,y=vals,fill=sexo))+
+  geom_bar(position="dodge", stat="identity")+
+  scale_y_continuous(labels = scales::dollar)+
+  scale_x_discrete(labels=c("Ingresos Promedio","Ingresos Medianos"))+
+  facet_wrap(~year)+
+  labs(title ="Ingresos por Sexo, en pesos constantes de 2016",x="",y="",
+       subtitle = "Trimestre Movil Enero - Marzo, 2016 vs 2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE. Nota: 100 pesos 2016 son equivalentes a 144.8 pesos de 2023")
+
+
+
+### Ingresos por Nivel Eductivo
+
+### 2016
+geih %>% subset(year==2016)%>% 
+  group_by(year,esc) %>%
+  summarise(ingresos_mean=weighted.mean(inglabo,na.rm = T,w=fex)) %>% subset(is.na(esc)==F) %>% 
+  ggplot(aes(x=reorder(esc,-ingresos_mean),y=ingresos_mean))+geom_col()+
+  scale_y_continuous(labels = scales::dollar)+
+  labs(title ="Ingresos por Escolaridad, en pesos constantes de 2016",x="",y="",
+       subtitle = "Trimestre Movil Enero - Marzo, 2016",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE. Nota: 100 pesos 2016 son equivalentes a 144.8 pesos de 2023")
+
+### 2023
+geih %>% subset(year==2023)%>% 
+  group_by(year,esc) %>%
+  summarise(ingresos_mean=weighted.mean(inglabo,na.rm = T,w=fex)) %>% subset(is.na(esc)==F) %>% 
+  ggplot(aes(x=reorder(esc,-ingresos_mean),y=ingresos_mean))+geom_col()+
+  scale_y_continuous(labels = scales::dollar)+
+  labs(title ="Ingresos por Escolaridad, en pesos constantes de 2016",x="",y="",
+       subtitle = "Trimestre Movil Enero - Marzo, 2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE. Nota: 100 pesos 2016 son equivalentes a 144.8 pesos de 2023")+
+  theme(axis.text.x = element_text(angle = 30, vjust = 0.5, hjust=1))
+
+
+
+### Ingreso urbano vs rural
+geih %>% group_by(year,clase) %>% summarise(ingresos_mean=weighted.mean(inglabo,na.rm = T,w=fex),
+                                            ingresos_median=median(inglabo,na.rm=T)) %>% 
+  pivot_longer(cols = c("ingresos_mean","ingresos_median"),names_to = c("vars"),values_to = "vals") %>% 
+  ggplot(aes(x=vars,y=vals,fill=clase))+
+  geom_bar(position="dodge", stat="identity")+
+  scale_y_continuous(labels = scales::dollar)+
+  scale_x_discrete(labels=c("Ingresos Promedio","Ingresos Medianos"))+
+  facet_wrap(~year)+
+  labs(title ="Ingresos por Urbanidad vs Ruralidad, en pesos constantes de 2016",x="",y="",
+       subtitle = "Trimestre Movil Enero - Marzo, 2016 vs 2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE. Nota: 100 pesos 2016 son equivalentes a 144.8 pesos de 2023")
+
+
+### iNgresos sexo y urbano/rural
+geih %>% group_by(year,sexo,clase) %>% summarise(ingresos_mean=weighted.mean(inglabo,na.rm = T,w=fex)) %>% 
+  pivot_longer(cols = c("ingresos_mean"),names_to = c("vars"),values_to = "vals") %>% 
+  ggplot()+geom_point(aes(x=as.factor(year),y=vals,col=sexo,shape=clase))+
+  geom_text(aes(x=as.factor(year),y=vals,col=sexo,label=round(vals,0)),vjust = -0.5)+
+  scale_y_continuous(labels = scales::dollar)+
+  labs(title ="Ingresos Promedio por Urbanidad vs Ruralidad y Sexo, en pesos constantes de 2016",x="",y="",
+       subtitle = "Trimestre Movil Enero - Marzo, 2016 vs 2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE. Nota: 100 pesos 2016 son equivalentes a 144.8 pesos de 2023")
+
+
+### Ingresos por grupo etario y sexo
+
+### 2016
+geih %>% subset(year==2016& grupo_etario != "15<") %>% 
+  group_by(year,sexo,grupo_etario) %>% 
+  summarise(ingresos_mean=weighted.mean(inglabo,na.rm = T,w=fex)) %>% 
+  ggplot(aes(x=grupo_etario,y=ingresos_mean,fill=sexo))+geom_bar(position = "dodge",stat = "identity")+
+  scale_y_continuous(labels = scales::dollar)+
+  labs(title ="Ingresos Promedio por Grupo Etario, en pesos constantes de 2016",x="",y="",
+       subtitle = "Trimestre Movil Enero - Marzo, 2016",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE. Nota: 100 pesos 2016 son equivalentes a 144.8 pesos de 2023")
+
+### 2023
+geih %>% subset(year==2023 & grupo_etario != "15<") %>% 
+  group_by(year,sexo,grupo_etario) %>% 
+  summarise(ingresos_mean=weighted.mean(inglabo,na.rm = T,w=fex)) %>% 
+  ggplot(aes(x=grupo_etario,y=ingresos_mean,fill=sexo))+geom_bar(position = "dodge",stat = "identity")+
+  scale_y_continuous(labels = scales::dollar)+
+  labs(title ="Ingresos Promedio por Grupo Etario, en pesos constantes de 2016",x="",y="",
+       subtitle = "Trimestre Movil Enero - Marzo, 2023",fill="",
+       caption = "Fuente: Elaboración propia con datos del DANE. Nota: 100 pesos 2016 son equivalentes a 144.8 pesos de 2023")
+
+### Horas trabajadas semanalmente
+geih %>% 
+  group_by(year) %>% 
+  summarise(horas_promedio=weighted.mean(horas_semanales,na.rm = T,w=fex)) %>% 
+  ggplot(aes(x=as.factor(year),y=horas_promedio))+geom_col()+
+  geom_text(aes(x=as.factor(year),y=horas_promedio,label=round(horas_promedio,1)),nudge_y = 1.5)+
+  labs(x="Año",y="Horas Semanales",title = "Jornada Laboral Semanal Promedio",subtitle =  "Trimestre Movil Enero - Marzo")
+
+### Horas trabajads semanalmente por sexo
+geih %>% 
+  group_by(year,sexo) %>% 
+  summarise(horas_promedio=weighted.mean(horas_semanales,na.rm = T,w=fex)) %>% 
+  ggplot(aes(x=as.factor(year),y=horas_promedio,fill=sexo))+geom_bar(position = "dodge",stat = "identity")+
+  labs(x="Año",y="Horas Semanales",fill="",title = "Jornada Laboral Semanal Promedio",subtitle =  "Trimestre Movil Enero - Marzo",caption = "Fuente: Elaboración propia con datos del DANE.")
+
+### TIempo Sin trabajar meses
+geih %>% 
+  group_by(year,sexo) %>% 
+  summarise(dur_desempleo_promedio=weighted.mean(dur_desempleo,na.rm = T,w=fex)) %>% 
+  mutate_if(is.numeric,function(x) x/4) %>% 
+  ggplot(aes(x=as.factor(year),y=dur_desempleo_promedio))+geom_col()+
+  labs(x="Año",y="Meses",
+       title = "Duración Promedio del Desempleo",
+       subtitle =  "Trimestre Movil Enero - Marzo",
+       caption = "Fuente: Elaboración propia con datos del DANE.")
+
+geih %>% 
+  group_by(year,sexo) %>% 
+  summarise(dur_desempleo_promedio=weighted.mean(dur_desempleo,na.rm = T,w=fex)) %>% 
+  mutate_if(is.numeric,function(x) x/4) %>% 
+  ggplot(aes(x=as.factor(year),y=dur_desempleo_promedio,fill=sexo))+geom_bar(position = "dodge",stat = "identity")+
+  labs(x="Año",y="Meses",
+       title = "Duración Promedio del Desempleo",
+       subtitle =  "Trimestre Movil Enero - Marzo",
+       caption = "Fuente: Elaboración propia con datos del DANE.")
+
